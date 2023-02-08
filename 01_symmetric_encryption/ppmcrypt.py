@@ -322,12 +322,7 @@ def test():
 
 
 def testECB():
-    """Simple test of correctness."""
-    with open('dk.ppm', 'rb') as f:
-        original_image = PPMImage.load_from_file(f)
-
     key = secrets.token_bytes(16)
-    image = original_image.copy()
     image = PPMImage.load_from_file(open('dk.ppm', 'rb'))
     image.encrypt(key, 'ecb')
     image.write_to_file(open('dk_enc_ecb.ppm', 'wb'))
@@ -337,12 +332,7 @@ def testECB():
 
 
 def testCBC():
-    """Simple test of correctness."""
-    with open('dk.ppm', 'rb') as f:
-        original_image = PPMImage.load_from_file(f)
-
     key = secrets.token_bytes(16)
-    image = original_image.copy()
     image = PPMImage.load_from_file(open('dk.ppm', 'rb'))
     image.encrypt(key, 'cbc')
     image.write_to_file(open('dk_enc_cbc.ppm', 'wb'))
@@ -351,12 +341,7 @@ def testCBC():
     image.write_to_file(open('dk_dec_cbc_tamper.ppm', 'wb'))
 
 def testCTR():
-    """Simple test of correctness."""
-    with open('dk.ppm', 'rb') as f:
-        original_image = PPMImage.load_from_file(f)
-
     key = secrets.token_bytes(16)
-    image = original_image.copy()
     image = PPMImage.load_from_file(open('dk.ppm', 'rb'))
     image.encrypt(key, 'ctr')
     image.write_to_file(open('dk_enc_ctr.ppm', 'wb'))
