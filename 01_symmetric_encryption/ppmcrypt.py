@@ -61,8 +61,8 @@ class PPMImage:
         """
         if mode.lower() == 'ecb':
             # --------- add your code here --------
-            raise NotImplementedError(f'mode of operation {mode} not implemented')
-            # ciphertext = ???
+            cipher = AES.new(key, AES.MODE_ECB)
+            ciphertext = cipher.encrypt(pad(self.data, 16))
             # ----- end add your code here --------
             # replace the image data with the ciphertext
             self.data = bytearray(ciphertext)
@@ -70,9 +70,9 @@ class PPMImage:
             self.comments.append(b'X-mode: ecb')
         elif mode.lower() == 'cbc':
             # --------- add your code here --------
-            raise NotImplementedError(f'mode of operation {mode} not implemented')
-            # iv = ???
-            # ciphertext = ???
+            iv = secrets.token_bytes(16)
+            cipher = AES.new(key, AES.MODE_CBC, iv=iv)
+            ciphertext = cipher.encrypt(pad(self.data, 16))
             # ----- end add your code here --------
             # replace the image data with the ciphertext
             self.data = bytearray(ciphertext)
@@ -82,9 +82,9 @@ class PPMImage:
             self.comments.append(f'X-iv: {iv.hex()}'.encode())
         elif mode.lower() == 'ctr':
             # --------- add your code here --------
-            raise NotImplementedError(f'mode of operation {mode} not implemented')
-            # nonce = ???
-            # ciphertext = ???
+            nonce = secrets.token_bytes(8)
+            cipher = AES.new(key, AES.MODE_CTR, nonce=nonce)
+            ciphertext = cipher.encrypt(self.data)
             # ----- end add your code here --------
             # replace the image data with the ciphertext
             self.data = bytearray(ciphertext)
@@ -94,10 +94,10 @@ class PPMImage:
             self.comments.append(f'X-nonce: {nonce.hex()}'.encode())
         elif mode.lower() == 'gcm':
             # --------- add your code here --------
-            raise NotImplementedError(f'mode of operation {mode} not implemented')
-            # nonce = ???
-            # ciphertext = ???
-            # tag = ???
+            nonce = secrets.token_bytes(8)
+            cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
+            ciphertext, mac = cipher.encrypt_and_digest(self.data)
+            tag = mac
             # ----- end add your code here --------
             # replace the image data with the ciphertext
             self.data = bytearray(ciphertext)
@@ -146,8 +146,9 @@ class PPMImage:
 
         if mode.lower() == 'ecb':
             # --------- add your code here --------
-            raise NotImplementedError(f'mode of operation {mode} not implemented')
-            # plaintext = ???
+            cipher = AES.new(key, AES.MODE_ECB)
+            plaintext = unpad(cipher.decrypt(self.data), 16)
+
             # ----- end add your code here --------
             # replace the image data with the plaintext
             self.data = bytearray(plaintext)
@@ -157,8 +158,8 @@ class PPMImage:
             # Read the used IV from the comments
             iv = bytes.fromhex(find_property_in_comments('iv'))
             # --------- add your code here --------
-            raise NotImplementedError(f'mode of operation {mode} not implemented')
-            # plaintext = ???
+            cipher = AES.new(key, AES.MODE_CBC, iv=iv)
+            plaintext = unpad(cipher.decrypt(self.data), 16)
             # ----- end add your code here --------
             # replace the image data with the plaintext
             self.data = bytearray(plaintext)
@@ -168,8 +169,8 @@ class PPMImage:
             # Read the used nonce from the comments
             nonce = bytes.fromhex(find_property_in_comments('nonce'))
             # --------- add your code here --------
-            raise NotImplementedError(f'mode of operation {mode} not implemented')
-            # plaintext = ???
+            cipher = AES.new(key, AES.MODE_CTR, nonce=nonce)
+            plaintext = cipher.decrypt(self.data)
             # ----- end add your code here --------
             # replace the image data with the plaintext
             self.data = bytearray(plaintext)
@@ -181,8 +182,8 @@ class PPMImage:
             # Read the authentication tag from the comments
             tag = bytes.fromhex(find_property_in_comments('tag'))
             # --------- add your code here --------
-            raise NotImplementedError(f'mode of operation {mode} not implemented')
-            # plaintext = ???
+            cipher = AES.new(key, AES.MODE_GCM, nonce = nonce)
+            plaintext = cipher.decrypt_and_verify(self.data, tag)
             # ----- end add your code here --------
             # replace the image data with the plaintext
             self.data = bytearray(plaintext)
@@ -320,6 +321,87 @@ def test():
         assert original_image == image, f'encrypting and decrypting with {mode} mode should yield the original image'
 
 
+def testECB():
+    """Simple test of correctness."""
+    with open('dk.ppm', 'rb') as f:
+        original_image = PPMImage.load_from_file(f)
+
+    key = secrets.token_bytes(16)
+    image = original_image.copy()
+    image = PPMImage.load_from_file(open('dk.ppm', 'rb'))
+    image.encrypt(key, 'ecb')
+    image.write_to_file(open('dk_enc_ecb.ppm', 'wb'))
+    image.decrypt(key)
+    image.data[1] = 0x42
+    image.write_to_file(open('dk_dec_ecb_tamper.ppm', 'wb'))
+
+
+def testCBC():
+    """Simple test of correctness."""
+    with open('dk.ppm', 'rb') as f:
+        original_image = PPMImage.load_from_file(f)
+
+    key = secrets.token_bytes(16)
+    image = original_image.copy()
+    image = PPMImage.load_from_file(open('dk.ppm', 'rb'))
+    image.encrypt(key, 'cbc')
+    image.write_to_file(open('dk_enc_cbc.ppm', 'wb'))
+    image.data[1] = 0x42
+    image.decrypt(key)
+    image.write_to_file(open('dk_dec_cbc_tamper.ppm', 'wb'))
+
+def testCTR():
+    """Simple test of correctness."""
+    with open('dk.ppm', 'rb') as f:
+        original_image = PPMImage.load_from_file(f)
+
+    key = secrets.token_bytes(16)
+    image = original_image.copy()
+    image = PPMImage.load_from_file(open('dk.ppm', 'rb'))
+    image.encrypt(key, 'ctr')
+    image.write_to_file(open('dk_enc_ctr.ppm', 'wb'))
+    image.data[0] = 0x00
+    image.data[1] = 0x00
+    image.data[2] = 0x00
+    image.decrypt(key)
+    image.write_to_file(open('dk_dec_ctr_tamper.ppm', 'wb'))
+
+def tamperCTR():
+    key = secrets.token_bytes(16)
+    image = PPMImage.load_from_file(open('dk.ppm', 'rb'))
+    original_image = image.copy()
+    image.encrypt(key, 'ctr')
+    image.write_to_file(open('dk_enc_ctr.ppm', 'wb'))
+    image_se = PPMImage.load_from_file(open('se.ppm', 'rb'))
+    key_arr = bytearray(a ^ b for (a, b) in zip(original_image.data, image.data))
+    image.data = bytearray(a ^ b for (a, b) in zip(key_arr, image_se.data))
+    image.decrypt(key)
+    image.write_to_file(open('dk_dec_ctr_tamper_swedish.ppm', 'wb'))
+
+def testGCM():
+    key = secrets.token_bytes(16)
+    image = PPMImage.load_from_file(open('dk.ppm', 'rb'))
+    image.encrypt(key, 'gcm')
+    image.write_to_file(open('dk_enc_gcm.ppm', 'wb'))
+    # image.data[:3] = bytes.fromhex('0000FF')
+    image.decrypt(key)
+    image.write_to_file(open('dk_dec_gcm.ppm', 'wb'))
+
+def tamperGCM():
+    key = secrets.token_bytes(16)
+    image = PPMImage.load_from_file(open('security.ppm', 'rb'))
+    image.encrypt(key, 'gcm')
+    image.write_to_file(open('security_enc_gcm.ppm', 'wb'))
+    image.height = image.height // 2
+    image.decrypt(key)
+    image.write_to_file(open('security_dec_gcm_tampered.ppm', 'wb'))
+
 if __name__ == '__main__':
     # The following is executed if you run `python3 ppmcrypt.py`.
-    test()
+    testECB()
+    testCBC()
+    testCTR()
+    tamperCTR()
+    testGCM()
+    tamperGCM()
+    
