@@ -11,28 +11,22 @@ def decrypt(input_file, output_file):
 	with open(input_file, 'rb') as f_in:
 		data = f_in.read()
 	
-	c_nonce = data[:15]
-	c_tag = data[16:31]
+	nonce = data[:16]
+	tag = data[16:32]
 	cipher = data[32:]
-	found = False
-	while (not found):
-		seed = 1676329200
+	seed = 1676934000
+	for seed in range (1676934000, 1677020401):
+		print(seed)
 		random.seed(seed)
 		key = random.randbytes(16)
-		aes = AES.new(key, AES.MODE_GCM, c_nonce)
-
+		aes = AES.new(key, AES.MODE_GCM, nonce)
 		try:
-			plaintext = aes.decrypt_and_verify(cipher, c_tag)
+			plaintext = aes.decrypt_and_verify(cipher, tag)
+			with open(output_file, 'wb') as f_out:
+				f_out.write(plaintext) # len(data) bytes
+			break
 		except:
-			if (seed > 1676415600):
-				print("failed")
-				found = True
-			seed = seed + 1
 			continue
-		found = True
-
-	with open(output_file, 'wb') as f_out:
-		f_out.write(str(plaintext)) # len(data) bytes
 
 
 if __name__ == '__main__':
